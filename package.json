@@ -1,0 +1,25 @@
+{
+  "name": "projektarbeit_db",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"},
+
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BaLeo23/WebAudio_Database.git"
+  },
+  "author": "BaLeo23",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BaLeo23/WebAudio_Database/issues"
+  },
+  "homepage": "https://github.com/BaLeo23/WebAudio_Database#readme",
+  "description": "",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.2",
+    "express": "^4.19.2",
+    "mysql2": "^3.10.0"
+  }
+}
