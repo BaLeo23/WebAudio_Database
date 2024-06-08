@@ -134,6 +134,25 @@ app.post('/soundfiles', (req, res) => {
     });
 });
 
+// Route zum Aktualisieren eines Soundfiles
+app.put('/soundfiles/:id', (req, res) => {
+    const { id } = req.params;
+    const { filename, filepath, upload_date, account_username } = req.body;
+    const sql = 'UPDATE Soundfile SET filename = ?, filepath = ?, upload_date = ?, account_username = ? WHERE id = ?';
+    db.query(sql, [filename, filepath, upload_date, account_username, id], (err, result) => {
+        if (err) {
+            console.error('Fehler beim Aktualisieren der Daten:', err);
+            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).send('Soundfile nicht gefunden');
+        }
+
+        res.send(`Soundfile mit ID ${id} aktualisiert!`);
+    });
+});
+
 app.delete('/soundfiles/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM Soundfile WHERE id = ?';
@@ -152,24 +171,7 @@ app.delete('/soundfiles/:id', (req, res) => {
     });
 });
 
-// Route zum Aktualisieren eines Soundfiles
-app.put('/soundfiles/:id', (req, res) => {
-    const { id } = req.params;
-    const { filename, filepath, upload_date, account_username } = req.body;
-    const sql = 'UPDATE Soundfile SET filename = ?, filepath = ?, upload_date = upload_date, account_username = ? WHERE id = ?';
-    db.query(sql, [filename, filepath, upload_date, account_username], (err, result) => {
-        if (err) {
-            console.error('Fehler beim Aktualisieren der Daten:', err);
-            res.status(500).send('Serverfehler');
-            return;
-        }
-        if (result.affectedRows === 0) {
-            res.status(404).send('Soundfile nicht gefunden');
-            return;
-        }
-        res.send('Soundfile aktualisiert!');
-    });
-});
+
 
 
 // Progress Routes
