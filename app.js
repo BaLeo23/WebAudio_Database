@@ -126,8 +126,8 @@ app.post('/soundfiles', (req, res) => {
     const { id, filename, filepath, upload_date, account_username } = req.body;
     db.query('INSERT INTO Soundfile SET ?', { id, filename, filepath, upload_date, account_username }, (err, results) => {
         if (err) {
-            console.error('Error creating soundfile:', err);
-            res.status(500).send('Internal Server Error');
+            console.error('Error creating account:', err);
+            res.status(500).send('Serverfehler');
             return;
         }
         res.send('Soundfile created successfully.');
@@ -316,18 +316,20 @@ app.post('/pois', (req, res) => {
     });
 });
 
+// Route zum Aktualisieren eines POI
 app.put('/pois/:id', (req, res) => {
     const { id } = req.params;
-    const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id } = req.body;
-    const sql = 'UPDATE POI SET order = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
+    const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id} = req.body;
+    const sql = 'UPDATE POI SET `order` = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
     db.query(sql, [order, x_coordinate, y_coordinate, soundfile_id, usecase_id, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
             return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
         }
-        res.send(`POI mit ID ${id} aktualisiert!`);
+        res.send('POI aktualisiert!');
     });
 });
+
 
 app.delete('/pois/:id', (req, res) => {
     const { id } = req.params;
@@ -343,7 +345,7 @@ app.delete('/pois/:id', (req, res) => {
             return;
         }
 
-        res.send(`POI mit ID ${username} gelöscht!`);
+        res.send(`POI mit ID ${id} gelöscht!`);
     });
 });
 
