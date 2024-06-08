@@ -256,10 +256,11 @@ app.post('/usecases', (req, res) => {
     });
 });
 
+// Route zum Aktualisieren eines Usecases
 app.put('/usecases/:id', (req, res) => {
     const { id } = req.params;
     const { titel, beschreibung, fixed_order, qr_code, account_username } = req.body;
-    const sql = 'UPDATE Progress SET titel = ?, beshreibung = ?, fixed_order = ?, qr_code = ?, account_username = ? WHERE id = ?';
+    const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ?, qr_code = ?, account_username = ? WHERE id = ?';
     db.query(sql, [titel, beschreibung, fixed_order, qr_code, account_username, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
@@ -269,7 +270,8 @@ app.put('/usecases/:id', (req, res) => {
     });
 });
 
-app.delete('/Usecase/:id', (req, res) => {
+
+app.delete('/usecases/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM Usecase WHERE id = ?';
     db.query(sql, [id], (err, result) => {
@@ -286,6 +288,7 @@ app.delete('/Usecase/:id', (req, res) => {
         res.send(`Usecase mit ID ${id} gelöscht!`);
     });
 });
+
 
 
 
