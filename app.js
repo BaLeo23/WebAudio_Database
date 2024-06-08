@@ -202,7 +202,7 @@ app.post('/progress', (req, res) => {
 app.put('/progress/:id', (req, res) => {
     const { id } = req.params;
     const { found, account_username, poi_id } = req.body;
-    const sql = 'UPDATE Progress SET found = ?, account_username = ?, poi_id WHERE id = ?';
+    const sql = 'UPDATE Progress SET found = ?, account_username = ?, poi_id = ? WHERE id = ?';
     db.query(sql, [found, account_username, poi_id, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
