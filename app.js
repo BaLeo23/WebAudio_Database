@@ -87,7 +87,7 @@ app.delete('/accounts/:username', (req, res) => {
 });
 
 
-
+/*
 // Route zum Aktualisieren eines Soundfiles
 app.put('/soundfiles/:id', (req, res) => {
     const { id } = req.params;
@@ -106,7 +106,7 @@ app.put('/soundfiles/:id', (req, res) => {
         res.send('Soundfile aktualisiert!');
     });
 });
-
+*/
 
 
 
@@ -196,6 +196,21 @@ app.post('/progress', (req, res) => {
     });
 });
 
+
+app.put('/progress/:id', (req, res) => {
+    const { id } = req.params;
+    const { found, account_username, poi_id } = req.body;
+    const sql = 'UPDATE Progress SET found = ?, account_username = ?, poi_id WHERE id = ?';
+    db.query(sql, [found, account_username, poi_id, id], (err, result) => {
+        if (err) {
+            console.error('Fehler beim Aktualisieren der Daten:', err);
+            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+        }
+        res.send(`Progress mit ID ${id} aktualisiert!`);
+    });
+});
+
+
 app.delete('/progress/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM Progress WHERE id = ?';
@@ -214,7 +229,9 @@ app.delete('/progress/:id', (req, res) => {
     });
 });
 
+
 // Usecase Routes
+
 app.get('/usecases', (req, res) => {
     db.query('SELECT * FROM Usecase', (err, results) => {
         if (err) {
@@ -225,6 +242,7 @@ app.get('/usecases', (req, res) => {
         res.json(results);
     });
 });
+
 
 app.post('/usecases', (req, res) => {
     const { id, titel, beschreibung, fixed_order, qr_code, account_username } = req.body;
@@ -238,6 +256,18 @@ app.post('/usecases', (req, res) => {
     });
 });
 
+app.put('/usecases/:id', (req, res) => {
+    const { id } = req.params;
+    const { titel, beschreibung, fixed_order, qr_code, account_username } = req.body;
+    const sql = 'UPDATE Progress SET titel = ?, beshreibung = ?, fixed_order = ?, qr_code = ?, account_username = ? WHERE id = ?';
+    db.query(sql, [titel, beschreibung, fixed_order, qr_code, account_username, id], (err, result) => {
+        if (err) {
+            console.error('Fehler beim Aktualisieren der Daten:', err);
+            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+        }
+        res.send(`Usecase mit ID ${id} aktualisiert!`);
+    });
+});
 
 app.delete('/Usecase/:id', (req, res) => {
     const { id } = req.params;
@@ -280,6 +310,19 @@ app.post('/pois', (req, res) => {
             return;
         }
         res.send('POI created successfully.');
+    });
+});
+
+app.put('/pois/:id', (req, res) => {
+    const { id } = req.params;
+    const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id } = req.body;
+    const sql = 'UPDATE POI SET order = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
+    db.query(sql, [order, x_coordinate, y_coordinate, soundfile_id, usecase_id, id], (err, result) => {
+        if (err) {
+            console.error('Fehler beim Aktualisieren der Daten:', err);
+            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+        }
+        res.send(`POI mit ID ${id} aktualisiert!`);
     });
 });
 
