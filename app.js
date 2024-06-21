@@ -1,9 +1,14 @@
 const express = require('express');
+const session = require('express-session');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
 
 const app = express();
 app.use(bodyParser.json());
+
+app.use(cors());
 
 const db = mysql.createConnection({
     host: 'localhost',
@@ -26,6 +31,53 @@ app.use((req, res, next) => {
     next();
 });
 
+app.use(session({
+    secret: 'secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 60000 }
+}));
+
+app.post('/loginAdmin', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        db.query('SELECT * FROM account WHERE username = ?', [username], async (err, results) => {
+            if (err) {
+                console.error('Error fetching accounts:', err);
+                res.status(500).send('Internal Server Error');
+                return;
+            }
+            if (results.length === 0) {
+                return res.status(400).send('Invalid credentials');
+            }
+
+            const user = results[0];
+            console.log('User found:', user)
+            console.log(user.password)
+            
+            if (!user || !(await bcrypt.compare(password, user.password))) {
+                return res.status(400).send('Invalid credentials');
+            }
+            req.session.isLoggedIn = true;
+            req.session.username = user.username;
+            res.send(true);
+        });
+    } catch (error) {
+        console.error('Error processing login:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.log(err);
+        } else {
+            res.send(true)
+        }
+    });
+});
+
 // Account Routes
 app.get('/accounts', (req, res) => {
     db.query('SELECT * FROM Account', (err, results) => {
@@ -38,16 +90,23 @@ app.get('/accounts', (req, res) => {
     });
 });
 
-app.post('/accounts', (req, res) => {
+app.post('/accounts', async (req, res) => {
     const { username, password, email } = req.body;
-    db.query('INSERT INTO Account SET ?', { username, password, email }, (err, results) => {
-        if (err) {
-            console.error('Error creating account:', err);
-            res.status(500).send('Internal Server Error');
-            return;
-        }
-        res.send('Account created successfully.');
-    });
+    try {
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        db.query('INSERT INTO Account SET ?', {username, password: hashedPassword, email}, (err, results) => {
+            if (err) {
+                console.error('Error creating account:', err);
+                res.status(500).send('Internal Server Error');
+                return;
+            }
+            res.send('Account created successfully.');
+        });
+    }catch (error) {
+        console.error('Error hashing password:', error);
+        res.status(500).send('Internal Server Error');
+   }
 });
 
 
