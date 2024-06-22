@@ -7,9 +7,10 @@ app.use(bodyParser.json());
 
 const db = mysql.createConnection({
     host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'web_audio_db'
+    port: 3307,
+    user: 'webaudio',
+    password: 'aui19o.qka1buDyjz44y',
+    database: 'webaudio'
 });
 
 db.connect((err) => {
