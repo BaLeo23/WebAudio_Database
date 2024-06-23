@@ -1,14 +1,27 @@
 const express = require('express');
 const session = require('express-session');
+const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 
 const app = express();
+
+app.use(express.json());
 app.use(bodyParser.json());
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:8080',
+    credentials: true
+}));
+
+app.use(session({
+    secret: 'kIDhEhgpshfnr',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 60000 * 10}
+}));
 
 const db = mysql.createConnection({
     host: 'localhost',
@@ -30,25 +43,25 @@ app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
     next();
 });
+ 
+app.get('/', (request, response) => {
+    console.log(request.session);
+    console.log(request.session.id)
+    request.session.logged = true
+    response.status(201).send("Hello")
+})
 
-app.use(session({
-    secret: 'secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { maxAge: 60000 }
-}));
-
-app.post('/loginAdmin', async (req, res) => {
-    const { username, password } = req.body;
+app.post('/loginAdmin', async (request, response) => {
+    const { username, password } = request.body;
     try {
         db.query('SELECT * FROM account WHERE username = ?', [username], async (err, results) => {
             if (err) {
                 console.error('Error fetching accounts:', err);
-                res.status(500).send('Internal Server Error');
+                response.status(500).send('Internal Server Error');
                 return;
             }
             if (results.length === 0) {
-                return res.status(400).send('Invalid credentials');
+                return response.status(400).send('Invalid credentials');
             }
 
             const user = results[0];
@@ -56,15 +69,18 @@ app.post('/loginAdmin', async (req, res) => {
             console.log(user.password)
             
             if (!user || !(await bcrypt.compare(password, user.password))) {
-                return res.status(400).send('Invalid credentials');
+                return response.status(400).send('Invalid credentials');
             }
-            req.session.isLoggedIn = true;
-            req.session.username = user.username;
-            res.send(true);
+            request.session.isLoggedIn = true;
+            console.log(user.username)
+            request.session.username = user.username;
+            console.log(request.session);
+            console.log(request.session.id);
+            response.send(true);
         });
     } catch (error) {
         console.error('Error processing login:', error);
-        res.status(500).send('Internal Server Error');
+        response.status(500).send('Internal Server Error');
     }
 });
 
@@ -293,14 +309,22 @@ app.delete('/progress/:id', (req, res) => {
 
 // Usecase Routes
 
-app.get('/usecases', (req, res) => {
-    db.query('SELECT * FROM Usecase', (err, results) => {
+app.get('/usecases', (request, response) => {
+    console.log(request.session)
+    console.log(request.session.id)
+    console.log(request.session.username)
+    if(!request.session.username) {
+        return response.status(401).send('Unauthorized');
+    }
+    const username = request.session.username;
+    console.log(username);
+    db.query('SELECT * FROM Usecase WHERE account_username = ?', [username], (err, results) => {
         if (err) {
             console.error('Error fetching usecases:', err);
-            res.status(500).send('Internal Server Error');
+            response.status(500).send('Internal Server Error');
             return;
         }
-        res.json(results);
+        response.json(results);
     });
 });
 
@@ -350,12 +374,36 @@ app.delete('/usecases/:id', (req, res) => {
     });
 });
 
+app.post('/choosenUseCase', (request, response) => {
+    const {id} = request.body
+    if(!request.session.username) {
+        return response.status(401).send('Unauthorized');
+    }
+    if(!id){
+        return response.send('requeste id is null');
+    }
+    db.query('SELECT * FROM Usecase WHERE id = ?', [id], (err, results) => {
+        if (err) {
+            console.error('Error fetching usecases:', err);
+            response.status(500).send('Internal Server Error');
+            return;
+        }
+        console.log(results[0]);
+        request.session.choosenUsecase = results[0];
+        response.send(true);
+    });
+})
 
 
 
 // POI Routes
 app.get('/pois', (req, res) => {
-    db.query('SELECT * FROM POI', (err, results) => {
+    if(!req.session.username) {
+        return res.status(401).send('Unauthorized');
+    }
+    const usecase_id = req.session.choosenUsecase.id
+    console.log(usecase_id);
+    db.query('SELECT * FROM POI WHERE usecase_id = ?', [usecase_id], (err, results) => {
         if (err) {
             console.error('Error fetching POIs:', err);
             res.status(500).send('Internal Server Error');
