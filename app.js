@@ -7,10 +7,14 @@ app.use(bodyParser.json());
 
 const db = mysql.createConnection({
     host: 'localhost',
-    port: 3307,
-    user: 'webaudio',
-    password: 'aui19o.qka1buDyjz44y',
-    database: 'webaudio'
+    port: 3306,
+    user: 'root',
+    password: '',
+    database: 'web_audio_db'
+    //port: 3307,
+    //user: 'webaudio',
+    //password: 'aui19o.qka1buDyjz44y',
+    //database: 'webaudio'
 });
 
 db.connect((err) => {
@@ -308,8 +312,8 @@ app.get('/pois', (req, res) => {
 });
 
 app.post('/pois', (req, res) => {
-    const { id, order, x_coordinate, y_coordinate, soundfile_id, usecase_id } = req.body;
-    db.query('INSERT INTO POI SET ?', { id, order, x_coordinate, y_coordinate, soundfile_id, usecase_id }, (err, results) => {
+    const { id, name, order, x_coordinate, y_coordinate, soundfile_id, usecase_id } = req.body;
+    db.query('INSERT INTO POI SET ?', { id, name, order, x_coordinate, y_coordinate, soundfile_id, usecase_id }, (err, results) => {
         if (err) {
             console.error('Error creating POI:', err);
             res.status(500).send('Internal Server Error');
@@ -322,9 +326,9 @@ app.post('/pois', (req, res) => {
 // Route zum Aktualisieren eines POI
 app.put('/pois/:id', (req, res) => {
     const { id } = req.params;
-    const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id} = req.body;
-    const sql = 'UPDATE POI SET `order` = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
-    db.query(sql, [order, x_coordinate, y_coordinate, soundfile_id, usecase_id, id], (err, result) => {
+    const { name, order, x_coordinate, y_coordinate, soundfile_id, usecase_id} = req.body;
+    const sql = 'UPDATE POI SET `name` = ?, `order` = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
+    db.query(sql, [name, order, x_coordinate, y_coordinate, soundfile_id, usecase_id, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
             return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
