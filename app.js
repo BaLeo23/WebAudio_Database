@@ -444,12 +444,12 @@ app.get('/pois', (request, response) => {
 });
 
 app.post('/pois', (request, response) => {
-    const { order, x_coordinate, y_coordinate } = request.body;
+    const { order, name, x_coordinate, y_coordinate } = request.body;
     if(!request.session.username) {
         return response.status(401).send('Unauthorized');
     }
     const usecase_id = request.session.chosenUsecase.id
-    db.query('INSERT INTO POI SET ?', { id: null, order, x_coordinate, y_coordinate, soundfile_id:"1", usecase_id }, (err, results) => {
+    db.query('INSERT INTO POI SET ?', { id: null, order, x_coordinate, y_coordinate, soundfile_id: "1", usecase_id, name }, (err, results) => {
         if (err) {
             console.error('Error creating POI:', err);
             response.status(500).send('Internal Server Error');
@@ -462,9 +462,9 @@ app.post('/pois', (request, response) => {
 // Route zum Aktualisieren eines POI
 app.put('/pois/:id', (request, response) => {
     const { id } = request.params;
-    const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id} = request.body;
+    const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id, name} = request.body;
     const sql = 'UPDATE POI SET `order` = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
-    db.query(sql, [order, x_coordinate, y_coordinate, soundfile_id, usecase_id, id], (err, result) => {
+    db.query(sql, [order, x_coordinate, y_coordinate, soundfile_id, usecase_id, id, name], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
             return response.status(500).send('Serverfehler beim Aktualisieren der Daten');
