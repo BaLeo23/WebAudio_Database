@@ -39,16 +39,15 @@ db.connect((err) => {
 });
 
 // Logging middleware
-app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
+app.use((request, response, next) => {
+    console.log(`${request.method} ${request.url}`);
     next();
 });
  
-app.get('/', (request, response) => {
+app.get('/loginUser', (request, response) => {
     console.log(request.session);
     console.log(request.session.id)
-    request.session.logged = true
-    response.status(201).send("Hello")
+    request.session.isLoggedIn = true
 })
 
 app.post('/loginAdmin', async (request, response) => {
@@ -84,101 +83,101 @@ app.post('/loginAdmin', async (request, response) => {
     }
 });
 
-app.get('/logout', (req, res) => {
-    req.session.destroy((err) => {
+app.get('/logout', (request, response) => {
+    request.session.destroy((err) => {
         if (err) {
             console.log(err);
         } else {
-            res.send(true)
+            response.send(true)
         }
     });
 });
 
 // Account Routes
-app.get('/accounts', (req, res) => {
+app.get('/accounts', (request, response) => {
     db.query('SELECT * FROM Account', (err, results) => {
         if (err) {
             console.error('Error fetching accounts:', err);
-            res.status(500).send('Internal Server Error');
+            response.status(500).send('Internal Server Error');
             return;
         }
-        res.json(results);
+        response.json(results);
     });
 });
 
-app.post('/accounts', async (req, res) => {
-    const { username, password, email } = req.body;
+app.post('/accounts', async (request, response) => {
+    const { username, password, email } = request.body;
     try {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
         db.query('INSERT INTO Account SET ?', {username, password: hashedPassword, email}, (err, results) => {
             if (err) {
                 console.error('Error creating account:', err);
-                res.status(500).send('Internal Server Error');
+                response.status(500).send('Internal Server Error');
                 return;
             }
-            res.send('Account created successfully.');
+            response.send('Account created successfully.');
         });
     }catch (error) {
         console.error('Error hashing password:', error);
-        res.status(500).send('Internal Server Error');
+        response.status(500).send('Internal Server Error');
    }
 });
 
 
 // Route zum Aktualisieren eines Accounts
-app.put('/accounts/:username', (req, res) => {
-    const { username } = req.params;
-    const { password, email } = req.body;
+app.put('/accounts/:username', (request, response) => {
+    const { username } = request.params;
+    const { password, email } = request.body;
     const sql = 'UPDATE Account SET password = ?, email = ? WHERE username = ?';
     db.query(sql, [password, email, username], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
-            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+            return response.status(500).send('Serverfehler beim Aktualisieren der Daten');
         }
-        res.send(`Account mit Username ${username} aktualisiert!`);
+        response.send(`Account mit Username ${username} aktualisiert!`);
     });
 });
 
 
 
 // Route zum Löschen eines Accounts
-app.delete('/accounts/:username', (req, res) => {
-    const { username } = req.params;
+app.delete('/accounts/:username', (request, response) => {
+    const { username } = request.params;
     const sql = 'DELETE FROM Account WHERE username = ?';
     db.query(sql, [username], (err, result) => {
         if (err) {
             console.error('Fehler beim Löschen der Daten:', err);
-            return res.status(500).send('Serverfehler beim Löschen der Daten');
+            return response.status(500).send('Serverfehler beim Löschen der Daten');
         }
 
         if (result.affectedRows === 0) {
-            res.status(404).send('Account nicht gefunden');
+            response.status(404).send('Account nicht gefunden');
             return;
         }
 
-        res.send(`Account mit Username ${username} gelöscht!`);
+        response.send(`Account mit Username ${username} gelöscht!`);
     });
 });
 
 
 /*
 // Route zum Aktualisieren eines Soundfiles
-app.put('/soundfiles/:id', (req, res) => {
-    const { id } = req.params;
-    const { filename, filepath, upload_date, account_username } = req.body;
+app.put('/soundfiles/:id', (request, response) => {
+    const { id } = request.params;
+    const { filename, filepath, upload_date, account_username } = request.body;
     const sql = 'UPDATE Soundfile SET filename = ?, filepath = ?, upload_date = upload_date, account_username = ? WHERE id = ?';
     db.query(sql, [filename, filepath, upload_date, account_username], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
-            res.status(500).send('Serverfehler');
+            response.status(500).send('Serverfehler');
             return;
         }
         if (result.affectedRows === 0) {
-            res.status(404).send('Soundfile nicht gefunden');
+            response.status(404).send('Soundfile nicht gefunden');
             return;
         }
-        res.send('Soundfile aktualisiert!');
+        response.send('Soundfile aktualisiert!');
     });
 });
 */
@@ -186,63 +185,63 @@ app.put('/soundfiles/:id', (req, res) => {
 
 
 // Soundfile Routes
-app.get('/soundfiles', (req, res) => {
+app.get('/soundfiles', (request, response) => {
     db.query('SELECT * FROM Soundfile', (err, results) => {
         if (err) {
             console.error('Error fetching soundfiles:', err);
-            res.status(500).send('Internal Server Error');
+            response.status(500).send('Internal Server Error');
             return;
         }
-        res.json(results);
+        response.json(results);
     });
 });
 
-app.post('/soundfiles', (req, res) => {
-    const { id, filename, filepath, upload_date, account_username } = req.body;
+app.post('/soundfiles', (request, response) => {
+    const { id, filename, filepath, upload_date, account_username } = request.body;
     db.query('INSERT INTO Soundfile SET ?', { id, filename, filepath, upload_date, account_username }, (err, results) => {
         if (err) {
             console.error('Error creating account:', err);
-            res.status(500).send('Serverfehler');
+            response.status(500).send('Serverfehler');
             return;
         }
-        res.send('Soundfile created successfully.');
+        response.send('Soundfile created successfully.');
     });
 });
 
 // Route zum Aktualisieren eines Soundfiles
-app.put('/soundfiles/:id', (req, res) => {
-    const { id } = req.params;
-    const { filename, filepath, upload_date, account_username } = req.body;
+app.put('/soundfiles/:id', (request, response) => {
+    const { id } = request.params;
+    const { filename, filepath, upload_date, account_username } = request.body;
     const sql = 'UPDATE Soundfile SET filename = ?, filepath = ?, upload_date = ?, account_username = ? WHERE id = ?';
     db.query(sql, [filename, filepath, upload_date, account_username, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
-            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+            return response.status(500).send('Serverfehler beim Aktualisieren der Daten');
         }
 
         if (result.affectedRows === 0) {
-            return res.status(404).send('Soundfile nicht gefunden');
+            return response.status(404).send('Soundfile nicht gefunden');
         }
 
-        res.send(`Soundfile mit ID ${id} aktualisiert!`);
+        response.send(`Soundfile mit ID ${id} aktualisiert!`);
     });
 });
 
-app.delete('/soundfiles/:id', (req, res) => {
-    const { id } = req.params;
+app.delete('/soundfiles/:id', (request, response) => {
+    const { id } = request.params;
     const sql = 'DELETE FROM Soundfile WHERE id = ?';
 
     db.query(sql, [id], (err, result) => {
         if (err) {
             console.error('Fehler beim Löschen der Daten:', err);
-            return res.status(500).send('Serverfehler');
+            return response.status(500).send('Serverfehler');
 
         }
         if (result.affectedRows === 0) {
-            return res.status(404).send('Soundfile nicht gefunden');
+            return response.status(404).send('Soundfile nicht gefunden');
 
         }
-        res.send('Soundfile gelöscht!');
+        response.send('Soundfile gelöscht!');
     });
 });
 
@@ -250,66 +249,82 @@ app.delete('/soundfiles/:id', (req, res) => {
 
 
 // Progress Routes
-app.get('/progress', (req, res) => {
+app.get('/progress', (request, response) => {
     db.query('SELECT * FROM Progress', (err, results) => {
         if (err) {
             console.error('Error fetching progress:', err);
-            res.status(500).send('Internal Server Error');
+            response.status(500).send('Internal Server Error');
             return;
         }
-        res.json(results);
+        response.json(results);
     });
 });
 
-app.post('/progress', (req, res) => {
-    const { id, found, account_username, poi_id } = req.body;
+app.post('/progress', (request, response) => {
+    const { id, found, account_username, poi_id } = request.body;
     db.query('INSERT INTO Progress SET ?', { id, found, account_username, poi_id }, (err, results) => {
         if (err) {
             console.error('Error creating progress:', err);
-            res.status(500).send('Internal Server Error');
+            response.status(500).send('Internal Server Error');
             return;
         }
-        res.send('Progress created successfully.');
+        response.send('Progress created successfully.');
     });
 });
 
 
-app.put('/progress/:id', (req, res) => {
-    const { id } = req.params;
-    const { found, account_username, poi_id } = req.body;
+app.put('/progress/:id', (request, response) => {
+    const { id } = request.params;
+    const { found, account_username, poi_id } = request.body;
     const sql = 'UPDATE Progress SET found = ?, account_username = ?, poi_id = ? WHERE id = ?';
     db.query(sql, [found, account_username, poi_id, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
-            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+            return response.status(500).send('Serverfehler beim Aktualisieren der Daten');
         }
-        res.send(`Progress mit ID ${id} aktualisiert!`);
+        response.send(`Progress mit ID ${id} aktualisiert!`);
     });
 });
 
 
-app.delete('/progress/:id', (req, res) => {
-    const { id } = req.params;
+app.delete('/progress/:id', (request, response) => {
+    const { id } = request.params;
     const sql = 'DELETE FROM Progress WHERE id = ?';
     db.query(sql, [id], (err, result) => {
         if (err) {
             console.error('Fehler beim Löschen der Daten:', err);
-            return res.status(500).send('Serverfehler beim Löschen der Daten');
+            return response.status(500).send('Serverfehler beim Löschen der Daten');
         }
 
         if (result.affectedRows === 0) {
-            res.status(404).send('Progress nicht gefunden');
+            response.status(404).send('Progress nicht gefunden');
             return;
         }
 
-        res.send(`Progress mit ID ${id} gelöscht!`);
+        response.send(`Progress mit ID ${id} gelöscht!`);
     });
 });
 
 
 // Usecase Routes
+app.get('/usecasesClient', (request, response) => {
+    console.log(request.session)
+    console.log(request.session.id)
+    if(!request.session.isLoggedIn) {
+        return response.status(401).send('Unauthorized');
+    }
+    db.query('SELECT * FROM Usecase', (err, results) => {
+        if (err) {
+            console.error('Error fetching usecases:', err);
+            response.status(500).send('Internal Server Error');
+            return;
+        }
+        response.json(results);
+    });
+});
 
-app.get('/usecases', (request, response) => {
+
+app.get('/usecasesAdmin', (request, response) => {
     console.log(request.session)
     console.log(request.session.id)
     console.log(request.session.username)
@@ -328,53 +343,68 @@ app.get('/usecases', (request, response) => {
     });
 });
 
+app.post('/usecasesAdmin', (request, response) => {
+    const { titel, beschreibung } = request.body;
+    if(!request.session.username){
+        return response.status(401).send('Unauthorized');
+    }
+    const account_username = request.session.username;
+    db.query('INSERT INTO Usecase SET ?', { id: null, titel, beschreibung, fixed_order: '0', qr_code: "1234", account_username }, (err, results) => {
+        if (err) {
+            console.error('Error creating usecase:', err);
+            response.status(500).send('Internal Server Error');
+            return;
+        }
+        response.send('Usecase created successfully.');
+    });
+});
 
-app.post('/usecases', (req, res) => {
-    const { id, titel, beschreibung, fixed_order, qr_code, account_username } = req.body;
+app.post('/usecases', (request, response) => {
+    const { id, titel, beschreibung, fixed_order, qr_code, account_username } = request.body;
     db.query('INSERT INTO Usecase SET ?', { id, titel, beschreibung, fixed_order, qr_code, account_username }, (err, results) => {
         if (err) {
             console.error('Error creating usecase:', err);
-            res.status(500).send('Internal Server Error');
+            response.status(500).send('Internal Server Error');
             return;
         }
-        res.send('Usecase created successfully.');
+        response.send('Usecase created successfully.');
     });
 });
 
 // Route zum Aktualisieren eines Usecases
-app.put('/usecases/:id', (req, res) => {
-    const { id } = req.params;
-    const { titel, beschreibung, fixed_order, qr_code, account_username } = req.body;
+app.put('/usecases/:id', (request, response) => {
+    const { id } = request.params;
+    const { titel, beschreibung, fixed_order, qr_code, account_username } = request.body;
     const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ?, qr_code = ?, account_username = ? WHERE id = ?';
     db.query(sql, [titel, beschreibung, fixed_order, qr_code, account_username, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
-            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+            return response.status(500).send('Serverfehler beim Aktualisieren der Daten');
         }
-        res.send(`Usecase mit ID ${id} aktualisiert!`);
+        response.send(`Usecase mit ID ${id} aktualisiert!`);
     });
 });
 
 
-app.delete('/usecases/:id', (req, res) => {
-    const { id } = req.params;
+app.delete('/usecases/:id', (request, response) => {
+    const { id } = request.params;
     const sql = 'DELETE FROM Usecase WHERE id = ?';
     db.query(sql, [id], (err, result) => {
         if (err) {
             console.error('Fehler beim Löschen der Daten:', err);
-            return res.status(500).send('Serverfehler beim Löschen der Daten');
+            return response.status(500).send('Serverfehler beim Löschen der Daten');
         }
 
         if (result.affectedRows === 0) {
-            res.status(404).send('Usecase nicht gefunden');
+            response.status(404).send('Usecase nicht gefunden');
             return;
         }
 
-        res.send(`Usecase mit ID ${id} gelöscht!`);
+        response.send(`Usecase mit ID ${id} gelöscht!`);
     });
 });
 
-app.post('/choosenUseCase', (request, response) => {
+app.post('/chosenUseCase', (request, response) => {
     const {id} = request.body
     if(!request.session.username) {
         return response.status(401).send('Unauthorized');
@@ -389,7 +419,7 @@ app.post('/choosenUseCase', (request, response) => {
             return;
         }
         console.log(results[0]);
-        request.session.choosenUsecase = results[0];
+        request.session.chosenUsecase = results[0];
         response.send(true);
     });
 })
@@ -397,73 +427,77 @@ app.post('/choosenUseCase', (request, response) => {
 
 
 // POI Routes
-app.get('/pois', (req, res) => {
-    if(!req.session.username) {
-        return res.status(401).send('Unauthorized');
+app.get('/pois', (request, response) => {
+    if(!request.session.isLoggedIn) {
+        return response.status(401).send('Unauthorized');
     }
-    const usecase_id = req.session.choosenUsecase.id
+    const usecase_id = request.session.chosenUsecase.id
     console.log(usecase_id);
     db.query('SELECT * FROM POI WHERE usecase_id = ?', [usecase_id], (err, results) => {
         if (err) {
             console.error('Error fetching POIs:', err);
-            res.status(500).send('Internal Server Error');
+            response.status(500).send('Internal Server Error');
             return;
         }
-        res.json(results);
+        response.json(results);
     });
 });
 
-app.post('/pois', (req, res) => {
-    const { id, order, x_coordinate, y_coordinate, soundfile_id, usecase_id } = req.body;
-    db.query('INSERT INTO POI SET ?', { id, order, x_coordinate, y_coordinate, soundfile_id, usecase_id }, (err, results) => {
+app.post('/pois', (request, response) => {
+    const { order, x_coordinate, y_coordinate } = request.body;
+    if(!request.session.username) {
+        return response.status(401).send('Unauthorized');
+    }
+    const usecase_id = request.session.chosenUsecase.id
+    db.query('INSERT INTO POI SET ?', { id: null, order, x_coordinate, y_coordinate, soundfile_id:"1", usecase_id }, (err, results) => {
         if (err) {
             console.error('Error creating POI:', err);
-            res.status(500).send('Internal Server Error');
+            response.status(500).send('Internal Server Error');
             return;
         }
-        res.send('POI created successfully.');
+        response.send('POI created successfully.');
     });
 });
 
 // Route zum Aktualisieren eines POI
-app.put('/pois/:id', (req, res) => {
-    const { id } = req.params;
-    const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id} = req.body;
+app.put('/pois/:id', (request, response) => {
+    const { id } = request.params;
+    const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id} = request.body;
     const sql = 'UPDATE POI SET `order` = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
     db.query(sql, [order, x_coordinate, y_coordinate, soundfile_id, usecase_id, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
-            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+            return response.status(500).send('Serverfehler beim Aktualisieren der Daten');
         }
-        res.send('POI aktualisiert!');
+        response.send('POI aktualisiert!');
     });
 });
 
 
-app.delete('/pois/:id', (req, res) => {
-    const { id } = req.params;
+app.delete('/pois/:id', (request, response) => {
+    const { id } = request.params;
     const sql = 'DELETE FROM POI WHERE id = ?';
     db.query(sql, [id], (err, result) => {
         if (err) {
             console.error('Fehler beim Löschen der Daten:', err);
-            return res.status(500).send('Serverfehler beim Löschen der Daten');
+            return response.status(500).send('Serverfehler beim Löschen der Daten');
         }
 
         if (result.affectedRows === 0) {
-            res.status(404).send('Account nicht gefunden');
+            response.status(404).send('Account nicht gefunden');
             return;
         }
 
-        res.send(`POI mit ID ${id} gelöscht!`);
+        response.send(`POI mit ID ${id} gelöscht!`);
     });
 });
 
 
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, request, response, next) => {
     console.error(err.stack);
-    res.status(500).send('Something broke!');
+    response.status(500).send('Something broke!');
 });
 
 const port = 3000;
