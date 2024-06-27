@@ -385,6 +385,31 @@ app.put('/usecases/:id', (request, response) => {
     });
 });
 
+app.put('/updateFixedOrderOfChosenUseCase', (request, response) => {
+    const {fixed_order} = request.body
+    if(!request.session.chosenUsecase){
+        response.status(404).send('Usecase nicht gefunden');
+    }
+    const id = request.session.chosenUsecase.id
+    const sql = 'UPDATE Usecase SET fixed_order = ? WHERE id = ?';
+    db.query(sql, [ fixed_order, id], (err, result) => {
+        if (err) {
+            console.error('Fehler beim Aktualisieren der Daten:', err);
+            return response.status(500).send('Serverfehler beim Aktualisieren der Daten');
+        }
+        db.query('SELECT * FROM Usecase WHERE id = ?', [id], (err, results) => {
+            if (err) {
+                console.error('Error fetching usecases:', err);
+                response.status(500).send('Internal Server Error');
+                return;
+            }
+            console.log(results[0]);
+            request.session.chosenUsecase = results[0];
+            response.send(`Usecase mit ID ${id} aktualisiert!`);
+        });
+    });
+})
+
 
 app.delete('/usecases/:id', (request, response) => {
     const { id } = request.params;
@@ -424,6 +449,17 @@ app.post('/chosenUseCase', (request, response) => {
     });
 })
 
+app.get('/chosenUseCase', (request, response) => {
+    if(!request.session.isLoggedIn) {
+        return response.status(401).send('Unauthorized');
+    }
+    if(!request.session.chosenUsecase){
+        return response.status(404).send('Usecase nicht gesetzt');
+    }
+
+    console.log(request.session.chosenUsecase)
+    response.json(request.session.chosenUsecase)
+})
 
 
 // POI Routes
@@ -463,8 +499,8 @@ app.post('/pois', (request, response) => {
 app.put('/pois/:id', (request, response) => {
     const { id } = request.params;
     const { order, x_coordinate, y_coordinate, soundfile_id, usecase_id, name} = request.body;
-    const sql = 'UPDATE POI SET `order` = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
-    db.query(sql, [order, x_coordinate, y_coordinate, soundfile_id, usecase_id, id, name], (err, result) => {
+    const sql = 'UPDATE POI SET `order` = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ?, name = ? WHERE id = ?';
+    db.query(sql, [order, x_coordinate, y_coordinate, soundfile_id, usecase_id, name, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
             return response.status(500).send('Serverfehler beim Aktualisieren der Daten');
@@ -490,6 +526,23 @@ app.delete('/pois/:id', (request, response) => {
 
         response.send(`POI mit ID ${id} gelöscht!`);
     });
+});
+
+app.put('/updatePoiOrder', (req, res) => {
+    const newOrder = req.body.newOrder;
+    console.log(newOrder)
+    newOrder.forEach(poi => {
+        const order = poi.order
+        const id = poi.id
+        db.query('UPDATE POI SET `order` = ? WHERE id = ?', [order, id], (err, results) => {
+            if (err) {
+                console.error('Error updating POI order:', err);
+                return res.status(500).send('Internal Server Error');
+            }
+        });
+    });
+
+    res.send('POI order updated successfully');
 });
 
 
