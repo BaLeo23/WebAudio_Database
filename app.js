@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 
@@ -37,6 +39,17 @@ db.connect((err) => {
     }
     console.log('Connected to the MySQL database.');
 });
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        // Behalte den originalen Dateinamen bei
+        cb(null, file.originalname);
+    }
+});
+const upload = multer({ storage: storage });
 
 // Logging middleware
 app.use((request, response, next) => {
@@ -190,7 +203,7 @@ app.get('/soundfiles', (request, response) => {
     if(!account_username){
         return response.status(401).send('Unauthorized');
     }
-    db.query('SELECT * FROM Soundfile WHERE account_username = ?', [] (err, results) => {
+    db.query('SELECT * FROM Soundfile WHERE account_username = ?', [account_username], (err, results) => {
         if (err) {
             console.error('Error fetching soundfiles:', err);
             response.status(500).send('Internal Server Error');
@@ -200,20 +213,44 @@ app.get('/soundfiles', (request, response) => {
     });
 });
 
-app.post('/soundfiles', (request, response) => {
-    const {filename} = request.body;
+// Route zum Bereitstellen der Sounddatei
+app.get('/soundfiles/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, 'uploads', filename);
+
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            console.error('Fehler beim Senden der Datei:', err);
+            res.status(500).send('Fehler beim Senden der Datei');
+        }
+    });
+});
+
+
+
+
+app.post('/soundfiles', upload.single('file'), (req, res) => {
     const account_username = request.session.username;
     if(!account_username){
         return response.status(401).send('Unauthorized');
     }
-    db.query('INSERT INTO Soundfile SET ?', {id: null, filename, filepath = "123", upload_date="123", account_username }, (err, results) => {
-        if (err) {
-            console.error('Error creating account:', err);
-            response.status(500).send('Serverfehler');
-            return;
-        }
-        response.send('Soundfile created successfully.');
-    });
+    if (!req.file) {
+        return res.status(400).send('Keine Datei hochgeladen');
+    }
+
+    const filename = req.file.originalname;  // Nutze den originalen Dateinamen
+    const filepath = req.file.path;
+    const upload_date = new Date();
+
+    db.query('INSERT INTO Soundfile (filename, filepath, upload_date, account_username) VALUES (?, ?, ?, ?)',
+        [filename, filepath, upload_date, account_username],
+        (err, results) => {
+            if (err) {
+                console.error('Fehler beim Einfügen der Daten:', err);
+                return res.status(500).send('Serverfehler');
+            }
+            res.send('Soundfile erfolgreich erstellt');
+        });
 });
 
 // Route zum Aktualisieren eines Soundfiles
