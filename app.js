@@ -1,9 +1,26 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
+// Multer
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
+// Middleware
 app.use(bodyParser.json());
+
+// Multer Konfiguration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        // Behalte den originalen Dateinamen bei
+        cb(null, file.originalname);
+    }
+});
+const upload = multer({ storage: storage });
 
 const db = mysql.createConnection({
     host: 'localhost',
@@ -140,37 +157,113 @@ app.get('/soundfiles', (req, res) => {
     });
 });
 
-app.post('/soundfiles', (req, res) => {
-    const { id, filename, account_username } = req.body;
-    db.query('INSERT INTO Soundfile SET ?', { id, filename, account_username }, (err, results) => {
-        if (err) {
-            console.error('Error creating account:', err);
-            res.status(500).send('Serverfehler');
-            return;
-        }
-        res.send('Soundfile created successfully.');
-    });
+
+app.post('/soundfiles', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('Keine Datei hochgeladen');
+    }
+
+    const filename = req.file.originalname;  // Nutze den originalen Dateinamen
+    const filepath = req.file.path;
+    const upload_date = new Date();
+    const { account_username } = req.body;
+
+    db.query('INSERT INTO Soundfile (filename, filepath, upload_date, account_username) VALUES (?, ?, ?, ?)',
+        [filename, filepath, upload_date, account_username],
+        (err, results) => {
+            if (err) {
+                console.error('Fehler beim Einfügen der Daten:', err);
+                return res.status(500).send('Serverfehler');
+            }
+            res.send('Soundfile erfolgreich erstellt');
+        });
 });
+
 
 // Route zum Aktualisieren eines Soundfiles
 app.put('/soundfiles/:id', (req, res) => {
     const { id } = req.params;
     const { filename, account_username } = req.body;
-    const sql = 'UPDATE Soundfile SET filename = ?, account_username = ? WHERE id = ?';
-    db.query(sql, [filename, filepath, upload_date, account_username, id], (err, result) => {
+
+    // Den aktuellen Dateipfad aus der Datenbank abrufen
+    const getFilePathSql = 'SELECT filepath FROM Soundfile WHERE id = ?';
+    db.query(getFilePathSql, [id], (err, results) => {
         if (err) {
-            console.error('Fehler beim Aktualisieren der Daten:', err);
-            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+            console.error('Fehler beim Abrufen des Dateipfads:', err);
+            return res.status(500).send('Serverfehler beim Abrufen des Dateipfads');
         }
 
-        if (result.affectedRows === 0) {
+        if (results.length === 0) {
             return res.status(404).send('Soundfile nicht gefunden');
         }
 
-        res.send(`Soundfile mit ID ${id} aktualisiert!`);
+        const oldFilePath = results[0].filepath;
+        const newFilePath = path.join(path.dirname(oldFilePath), filename);
+
+        // Die Datei im Dateisystem umbenennen
+        fs.rename(oldFilePath, newFilePath, (err) => {
+            if (err) {
+                console.error('Fehler beim Umbenennen der Datei:', err);
+                return res.status(500).send('Serverfehler beim Umbenennen der Datei');
+            }
+
+            // Den Dateinamen und den Dateipfad in der Datenbank aktualisieren
+            const updateSql = 'UPDATE Soundfile SET filename = ?, filepath = ?, account_username = ? WHERE id = ?';
+            db.query(updateSql, [filename, newFilePath, account_username, id], (err, result) => {
+                if (err) {
+                    console.error('Fehler beim Aktualisieren der Daten:', err);
+                    return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+                }
+
+                if (result.affectedRows === 0) {
+                    return res.status(404).send('Soundfile nicht gefunden');
+                }
+
+                res.send(`Soundfile mit ID ${id} aktualisiert!`);
+            });
+        });
     });
 });
 
+
+
+// Route zum Löschen einer Soundfile
+app.delete('/soundfiles/:id', (req, res) => {
+    const { id } = req.params;
+
+    // Den Dateipfad aus der Datenbank abrufen
+    db.query('SELECT filepath FROM Soundfile WHERE id = ?', [id], (err, results) => {
+        if (err) {
+            console.error('Fehler beim Abrufen des Dateipfads:', err);
+            return res.status(500).send('Serverfehler beim Abrufen des Dateipfads');
+        }
+
+        if (results.length === 0) {
+            return res.status(404).send('Soundfile nicht gefunden');
+        }
+
+        const filepath = results[0].filepath;
+
+        // Die Datei vom Dateisystem löschen
+        fs.unlink(filepath, (err) => {
+            if (err) {
+                console.error('Fehler beim Löschen der Datei:', err);
+                return res.status(500).send('Serverfehler beim Löschen der Datei');
+            }
+
+            // Den Eintrag in der Datenbank löschen
+            db.query('DELETE FROM Soundfile WHERE id = ?', [id], (err, result) => {
+                if (err) {
+                    console.error('Fehler beim Löschen des Datenbankeintrags:', err);
+                    return res.status(500).send('Serverfehler beim Löschen des Datenbankeintrags');
+                }
+
+                res.send('Soundfile erfolgreich gelöscht');
+            });
+        });
+    });
+});
+/*
 app.delete('/soundfiles/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM Soundfile WHERE id = ?';
@@ -188,6 +281,8 @@ app.delete('/soundfiles/:id', (req, res) => {
         res.send('Soundfile gelöscht!');
     });
 });
+
+ */
 
 
 
