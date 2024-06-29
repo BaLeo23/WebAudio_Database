@@ -186,7 +186,11 @@ app.put('/soundfiles/:id', (request, response) => {
 
 // Soundfile Routes
 app.get('/soundfiles', (request, response) => {
-    db.query('SELECT * FROM Soundfile', (err, results) => {
+    const account_username = request.session.username
+    if(!account_username){
+        return response.status(401).send('Unauthorized');
+    }
+    db.query('SELECT * FROM Soundfile WHERE account_username = ?', [] (err, results) => {
         if (err) {
             console.error('Error fetching soundfiles:', err);
             response.status(500).send('Internal Server Error');
@@ -197,8 +201,12 @@ app.get('/soundfiles', (request, response) => {
 });
 
 app.post('/soundfiles', (request, response) => {
-    const { id, filename, filepath, upload_date, account_username } = request.body;
-    db.query('INSERT INTO Soundfile SET ?', { id, filename, filepath, upload_date, account_username }, (err, results) => {
+    const {filename} = request.body;
+    const account_username = request.session.username;
+    if(!account_username){
+        return response.status(401).send('Unauthorized');
+    }
+    db.query('INSERT INTO Soundfile SET ?', {id: null, filename, filepath = "123", upload_date="123", account_username }, (err, results) => {
         if (err) {
             console.error('Error creating account:', err);
             response.status(500).send('Serverfehler');
