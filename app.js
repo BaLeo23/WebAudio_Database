@@ -280,7 +280,7 @@ app.get('/soundfiles/:id', (req, res) => {
 });
 
 
-app.get('/soundfiles/:filename', (req, res) => {
+app.get('/soundfilesFile/:filename', (req, res) => {
     const filename = req.params.filename;
     const filePath = path.join(__dirname, 'uploads', filename);
 
