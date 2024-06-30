@@ -1,6 +1,10 @@
 const express = require('express');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
 // Multer
 const multer = require('multer');
 const fs = require('fs');
@@ -11,14 +15,34 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+app.use(cors({
+    origin: 'http://localhost:8080',
+    headers: 'Content-Type, Authorization',
+    methods: 'GET, POST, PUT, DELETE',
+    credentials: true
+}));
+
+app.use(session({
+    secret: 'kIDhEhgpshfnr',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 60000 * 120} //session ist für 2 Stunden geöffnet
+}));
+
 // Multer Konfiguration
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+    destination: function (req, file, cb) {
+        // Stelle sicher, dass das Verzeichnis existiert, andernfalls erstelle es
+        const dir = path.join(__dirname, 'uploads');
+        console.log(dir)
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+            console.log("ich mach ein neues")
+        }
+        cb(null, dir);
     },
-    filename: (req, file, cb) => {
-        // Behalte den originalen Dateinamen bei
-        cb(null, file.originalname);
+    filename: function (req, file, cb) {
+        cb(null, file.originalname + " " + req.session.username);
     }
 });
 const upload = multer({ storage: storage });
@@ -49,6 +73,49 @@ app.use((req, res, next) => {
     next();
 });
 
+app.post('/loginAdmin', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        db.query('SELECT * FROM account WHERE username = ?', [username], async (err, results) => {
+            if (err) {
+                console.error('Error fetching accounts:', err);
+                res.status(500).send('Internal Server Error');
+                return;
+            }
+            if (results.length === 0) {
+                return res.status(400).send('Invalid credentials');
+            }
+
+            const user = results[0];
+            console.log('User found:', user)
+            console.log(user.password)
+
+            if (!user || !(await bcrypt.compare(password, user.password))) {
+                return res.status(400).send('Invalid credentials');
+            }
+            req.session.isLoggedIn = true;
+            console.log(user.username)
+            req.session.username = user.username;
+            console.log(req.session);
+            console.log(req.session.id);
+            res.send(true);
+        });
+    } catch (error) {
+        console.error('Error processing login:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/logout', (request, response) => {
+    request.session.destroy((err) => {
+        if (err) {
+            console.log(err);
+        } else {
+            response.send(true)
+        }
+    });
+});
+
 // Account Routes
 app.get('/accounts', (req, res) => {
     db.query('SELECT * FROM Account', (err, results) => {
@@ -61,16 +128,23 @@ app.get('/accounts', (req, res) => {
     });
 });
 
-app.post('/accounts', (req, res) => {
+app.post('/accounts', async (req, res) => {
     const { username, password, email } = req.body;
-    db.query('INSERT INTO Account SET ?', { username, password, email }, (err, results) => {
-        if (err) {
-            console.error('Error creating account:', err);
-            res.status(500).send('Internal Server Error');
-            return;
-        }
-        res.send('Account created successfully.');
-    });
+    try {
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        db.query('INSERT INTO Account SET ?', {username, password: hashedPassword, email}, (err, results) => {
+            if (err) {
+                console.error('Error creating account:', err);
+                res.status(500).send('Internal Server Error');
+                return;
+            }
+            res.send('Account created successfully.');
+        });
+    }catch (error) {
+        console.error('Error hashing password:', error);
+        res.status(500).send('Internal Server Error');
+    }
 });
 
 
@@ -148,7 +222,11 @@ app.put('/soundfiles/:id', (req, res) => {
  */
 
 app.get('/soundfiles', (req, res) => {
-    db.query('SELECT * FROM Soundfile', (err, results) => {
+    const account_username = req.session.username
+    if(!account_username){
+        return res.status(401).send('Unauthorized');
+    }
+    db.query('SELECT * FROM Soundfile WHERE account_username = ?', [account_username], (err, results) => {
         if (err) {
             console.error('Error fetching soundfiles:', err);
             res.status(500).send('Internal Server Error');
@@ -157,40 +235,6 @@ app.get('/soundfiles', (req, res) => {
         res.json(results);
     });
 });
-
-app.get('/soundfiles/:id/download', (req, res) => {
-    const { id } = req.params;
-
-    // Den Dateipfad aus der Datenbank abrufen
-    const getFilePathSql = 'SELECT filepath FROM Soundfile WHERE id = ?';
-    db.query(getFilePathSql, [id], (err, results) => {
-        if (err) {
-            console.error('Fehler beim Abrufen des Dateipfads:', err);
-            return res.status(500).send('Serverfehler beim Abrufen des Dateipfads');
-        }
-
-        if (results.length === 0) {
-            return res.status(404).send('Soundfile nicht gefunden');
-        }
-
-        const filePath = results[0].filepath;
-
-        // Überprüfen, ob die Datei existiert
-        fs.stat(filePath, (err, stat) => {
-            if (err) {
-                console.error('Datei nicht gefunden:', err);
-                return res.status(404).send('Datei nicht gefunden');
-            }
-
-            // Datei als Stream an den Client senden
-            res.setHeader('Content-Length', stat.size);
-            res.setHeader('Content-Type', 'audio/mpeg'); // Anpassen je nach Dateityp
-            const fileStream = fs.createReadStream(filePath);
-            fileStream.pipe(res);
-        });
-    });
-});
-
 
 // Route zum Bereitstellen der Sounddatei
 app.get('/soundfiles/:filename', (req, res) => {
@@ -209,15 +253,17 @@ app.get('/soundfiles/:filename', (req, res) => {
 
 
 app.post('/soundfiles', upload.single('file'), (req, res) => {
+    const account_username = req.session.username;
+    if(!account_username){
+        return response.status(401).send('Unauthorized');
+    }
     if (!req.file) {
         return res.status(400).send('Keine Datei hochgeladen');
     }
 
-    const filename = req.file.originalname;  // Nutze den originalen Dateinamen
+    const filename = req.file.originalname + " " + req.session.username;  // Nutze den originalen Dateinamen
     const filepath = req.file.path;
     const upload_date = new Date();
-    const { account_username } = req.body;
-
     db.query('INSERT INTO Soundfile (filename, filepath, upload_date, account_username) VALUES (?, ?, ?, ?)',
         [filename, filepath, upload_date, account_username],
         (err, results) => {
@@ -228,6 +274,7 @@ app.post('/soundfiles', upload.single('file'), (req, res) => {
             res.send('Soundfile erfolgreich erstellt');
         });
 });
+
 
 
 // Route zum Aktualisieren eines Soundfiles
@@ -398,8 +445,16 @@ app.delete('/progress/:id', (req, res) => {
 
 // Usecase Routes
 
-app.get('/usecases', (req, res) => {
-    db.query('SELECT * FROM Usecase', (err, results) => {
+app.get('/usecasesAdmin', (req, res) => {
+    console.log(req.session)
+    console.log(req.session.id)
+    console.log(req.session.username)
+    if(!req.session.username) {
+        return res.status(401).send('Unauthorized');
+    }
+    const username = req.session.username;
+    console.log(username);
+    db.query('SELECT * FROM Usecase WHERE account_username = ?', [username], (err, results) => {
         if (err) {
             console.error('Error fetching usecases:', err);
             res.status(500).send('Internal Server Error');
@@ -409,10 +464,25 @@ app.get('/usecases', (req, res) => {
     });
 });
 
+app.get('/usecases/:id', (req, res) => {
+    const id = req.params.id;
+    db.query('SELECT * FROM Usecase WHERE id = ?', id, (err, results) => {
+        if (err) {
+            console.error(`Error fetching usecase with id ${id}:`, err);
+            res.status(500).send('Internal Server Error');
+            return;
+        }
+        res.json(results);
+    });
+})
 
-app.post('/usecases', (req, res) => {
-    const { id, titel, beschreibung, fixed_order, qr_code, account_username } = req.body;
-    db.query('INSERT INTO Usecase SET ?', { id, titel, beschreibung, fixed_order, qr_code, account_username }, (err, results) => {
+app.post('/usecasesAdmin', (req, res) => {
+    const { titel, beschreibung } = req.body;
+    if(!req.session.username){
+        return res.status(401).send('Unauthorized');
+    }
+    const account_username = req.session.username;
+    db.query('INSERT INTO Usecase SET ?', { id: null, titel, beschreibung, fixed_order: '0', qr_code: "1234", account_username }, (err, results) => {
         if (err) {
             console.error('Error creating usecase:', err);
             res.status(500).send('Internal Server Error');
@@ -436,6 +506,31 @@ app.put('/usecases/:id', (req, res) => {
     });
 });
 
+app.put('/updateFixedOrderOfChosenUseCase', (req, res) => {
+    const {fixed_order} = req.body
+    if(!req.session.chosenUsecase){
+        res.status(404).send('Usecase nicht gefunden');
+    }
+    const id = req.session.chosenUsecase.id
+    const sql = 'UPDATE Usecase SET fixed_order = ? WHERE id = ?';
+    db.query(sql, [ fixed_order, id], (err, result) => {
+        if (err) {
+            console.error('Fehler beim Aktualisieren der Daten:', err);
+            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+        }
+        db.query('SELECT * FROM Usecase WHERE id = ?', [id], (err, results) => {
+            if (err) {
+                console.error('Error fetching usecases:', err);
+                res.status(500).send('Internal Server Error');
+                return;
+            }
+            console.log(results[0]);
+            req.session.chosenUsecase = results[0];
+            res.send(`Usecase mit ID ${id} aktualisiert!`);
+        });
+    });
+})
+
 
 app.delete('/usecases/:id', (req, res) => {
     const { id } = req.params;
@@ -455,12 +550,61 @@ app.delete('/usecases/:id', (req, res) => {
     });
 });
 
+app.post('/chosenUseCase', (req, res) => {
+    const {id} = req.body
+    if(!req.session.username) {
+        return res.status(401).send('Unauthorized');
+    }
+    if(!id){
+        return res.send('requeste id is null');
+    }
+    db.query('SELECT * FROM Usecase WHERE id = ?', [id], (err, results) => {
+        if (err) {
+            console.error('Error fetching usecases:', err);
+            res.status(500).send('Internal Server Error');
+            return;
+        }
+        console.log(results[0]);
+        req.session.chosenUsecase = results[0];
+        res.send(true);
+    });
+})
 
+app.get('/chosenUseCase', (req, res) => {
+    if(!req.session.username) {
+        return res.status(401).send('Unauthorized');
+    }
+    if(!req.session.chosenUsecase){
+        return res.status(404).send('Usecase nicht gesetzt');
+    }
 
+    console.log(req.session.chosenUsecase)
+    res.json(req.session.chosenUsecase)
+})
 
 // POI Routes
+app.get('/usecases/:id/pois', (req, res) => {
+    const id = req.params.id;
+    db.query('SELECT * FROM POI WHERE usecase_id = ?', id, (err, results) => {
+        if (err) {
+            console.error(`Error fetching usecase with id ${id}:`, err);
+            res.status(500).send('Internal Server Error');
+            return;
+        }
+        res.json(results);
+    });
+});
+
 app.get('/pois', (req, res) => {
-    db.query('SELECT * FROM POI', (err, results) => {
+    if(!req.session.username) {
+        return res.status(401).send('Unauthorized');
+    }
+    if(!req.session.chosenUsecase){
+        return res.status(404).send('usecase not found')
+    }
+    const usecase_id = req.session.chosenUsecase.id
+    console.log(usecase_id);
+    db.query('SELECT * FROM POI WHERE usecase_id = ?', [usecase_id], (err, results) => {
         if (err) {
             console.error('Error fetching POIs:', err);
             res.status(500).send('Internal Server Error');
@@ -471,8 +615,12 @@ app.get('/pois', (req, res) => {
 });
 
 app.post('/pois', (req, res) => {
-    const { id, name, order, x_coordinate, y_coordinate, soundfile_id, usecase_id } = req.body;
-    db.query('INSERT INTO POI SET ?', { id, name, order, x_coordinate, y_coordinate, soundfile_id, usecase_id }, (err, results) => {
+    const { order, name, x_coordinate, y_coordinate } = req.body;
+    if(!req.session.username) {
+        return res.status(401).send('Unauthorized');
+    }
+    const usecase_id = req.session.chosenUsecase.id
+    db.query('INSERT INTO POI SET ?', { id: null, order, x_coordinate, y_coordinate, soundfile_id: "1", usecase_id, name }, (err, results) => {
         if (err) {
             console.error('Error creating POI:', err);
             res.status(500).send('Internal Server Error');
@@ -496,6 +644,22 @@ app.put('/pois/:id', (req, res) => {
     });
 });
 
+app.put('/updatePoiOrder', (req, res) => {
+    const newOrder = req.body.newOrder;
+    console.log(newOrder)
+    newOrder.forEach(poi => {
+        const order = poi.order
+        const id = poi.id
+        db.query('UPDATE POI SET `order` = ? WHERE id = ?', [order, id], (err, results) => {
+            if (err) {
+                console.error('Error updating POI order:', err);
+                return res.status(500).send('Internal Server Error');
+            }
+        });
+    });
+
+    res.send('POI order updated successfully');
+});
 
 app.delete('/pois/:id', (req, res) => {
     const { id } = req.params;
