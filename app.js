@@ -145,11 +145,11 @@ app.get('/accounts', (req, res) => {
 });
 
 app.post('/accounts', async (req, res) => {
-    const { username, password, email } = req.body;
+    const { username, password } = req.body;
     try {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-        db.query('INSERT INTO Account SET ?', {username, password: hashedPassword, email}, (err, results) => {
+        db.query('INSERT INTO Account SET ?', {username, password: hashedPassword}, (err, results) => {
             if (err) {
                 console.error('Error creating account:', err);
                 res.status(500).send('Internal Server Error');
@@ -167,9 +167,9 @@ app.post('/accounts', async (req, res) => {
 // Route zum Aktualisieren eines Accounts
 app.put('/accounts/:username', (req, res) => {
     const { username } = req.params;
-    const { password, email } = req.body;
-    const sql = 'UPDATE Account SET password = ?, email = ? WHERE username = ?';
-    db.query(sql, [password, email, username], (err, result) => {
+    const { password } = req.body;
+    const sql = 'UPDATE Account SET password = ? WHERE username = ?';
+    db.query(sql, [password, username], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
             return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
@@ -253,6 +253,33 @@ app.get('/soundfiles', (req, res) => {
 });
 
 // Route zum Bereitstellen der Sounddatei
+app.get('/soundfiles/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = 'SELECT filepath FROM Soundfile WHERE id = ?';
+
+    db.query(sql, [id], (err, results) => {
+        if (err) {
+            console.error('Fehler beim Abrufen der Daten:', err);
+            return res.status(500).send('Serverfehler beim Abrufen der Daten');
+        }
+
+        if (results.length === 0) {
+            return res.status(404).send('Soundfile nicht gefunden');
+        }
+
+        const filepath = results[0].filepath;
+        const filePath = path.join(__dirname, filepath);
+
+        res.sendFile(filePath, (err) => {
+            if (err) {
+                console.error('Fehler beim Senden der Datei:', err);
+                res.status(500).send('Fehler beim Senden der Datei');
+            }
+        });
+    });
+});
+
+
 app.get('/soundfiles/:filename', (req, res) => {
     const filename = req.params.filename;
     const filePath = path.join(__dirname, 'uploads', filename);
@@ -264,7 +291,6 @@ app.get('/soundfiles/:filename', (req, res) => {
         }
     });
 });
-
 
 
 
@@ -498,7 +524,7 @@ app.post('/usecasesAdmin', (req, res) => {
         return res.status(401).send('Unauthorized');
     }
     const account_username = req.session.username;
-    db.query('INSERT INTO Usecase SET ?', { id: null, titel, beschreibung, fixed_order: '0', qr_code: "1234", account_username }, (err, results) => {
+    db.query('INSERT INTO Usecase SET ?', { id: null, titel, beschreibung, fixed_order: '0', account_username }, (err, results) => {
         if (err) {
             console.error('Error creating usecase:', err);
             res.status(500).send('Internal Server Error');
@@ -511,9 +537,9 @@ app.post('/usecasesAdmin', (req, res) => {
 // Route zum Aktualisieren eines Usecases
 app.put('/usecases/:id', (req, res) => {
     const { id } = req.params;
-    const { titel, beschreibung, fixed_order, qr_code, account_username } = req.body;
-    const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ?, qr_code = ?, account_username = ? WHERE id = ?';
-    db.query(sql, [titel, beschreibung, fixed_order, qr_code, account_username, id], (err, result) => {
+    const { titel, beschreibung, fixed_order, account_username } = req.body;
+    const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ? = ?, account_username = ? WHERE id = ?';
+    db.query(sql, [titel, beschreibung, fixed_order, account_username, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
             return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
