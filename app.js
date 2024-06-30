@@ -76,30 +76,37 @@ app.use((req, res, next) => {
 app.post('/loginAdmin', async (req, res) => {
     const { username, password } = req.body;
     try {
-        db.query('SELECT * FROM account WHERE username = ?', [username], async (err, results) => {
-            if (err) {
-                console.error('Error fetching accounts:', err);
-                res.status(500).send('Internal Server Error');
-                return;
-            }
-            if (results.length === 0) {
-                return res.status(400).send('Invalid credentials');
-            }
-
-            const user = results[0];
-            console.log('User found:', user)
-            console.log(user.password)
-
-            if (!user || !(await bcrypt.compare(password, user.password))) {
-                return res.status(400).send('Invalid credentials');
-            }
-            req.session.isLoggedIn = true;
-            console.log(user.username)
-            req.session.username = user.username;
-            console.log(req.session);
-            console.log(req.session.id);
+        if(req.session.username && req.session.username === ""){
+            console.log("already loggedIn")
             res.send(true);
-        });
+        } else if(username == null){
+            res.send(false)
+        } else {
+            db.query('SELECT * FROM account WHERE username = ?', [username], async (err, results) => {
+                if (err) {
+                    console.error('Error fetching accounts:', err);
+                    res.status(500).send('Internal Server Error');
+                    return;
+                }
+                if (results.length === 0) {
+                    return res.status(400).send('Invalid credentials');
+                }
+
+                const user = results[0];
+                console.log('User found:', user)
+                console.log(user.password)
+
+                if (!user || !(await bcrypt.compare(password, user.password))) {
+                    return res.status(400).send('Invalid credentials');
+                }
+                req.session.isLoggedIn = true;
+                console.log(user.username)
+                req.session.username = user.username;
+                console.log(req.session);
+                console.log(req.session.id);
+                res.send(true);
+            });
+        }
     } catch (error) {
         console.error('Error processing login:', error);
         res.status(500).send('Internal Server Error');
@@ -107,16 +114,22 @@ app.post('/loginAdmin', async (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
+    
+    req.session.username = ""
+    req.session.isLoggedIn = false
+    req.session.chosenUsecase = ""
+    console.log(req.session)
+
     req.session.destroy((err) => {
         if (err) {
             console.error(err);
             return res.status(500).send('Internal Server Error');
-        } else {
-            console.log("Gehst du überhaupt hier hin?")
-            res.clearCookie('connect.sid', { path: '/' });
-            res.send(true)
         }
     });
+    res.clearCookie('connect.sid', { path: '/', httpOnly: true, secure: false });
+    res.send(true)
+    console.log(req.cookies)
+    console.log(req.session)
 });
 
 // Account Routes
