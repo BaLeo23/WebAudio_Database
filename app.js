@@ -240,6 +240,33 @@ app.get('/soundfiles', (req, res) => {
 });
 
 // Route zum Bereitstellen der Sounddatei
+app.get('/soundfiles/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = 'SELECT filepath FROM Soundfile WHERE id = ?';
+
+    db.query(sql, [id], (err, results) => {
+        if (err) {
+            console.error('Fehler beim Abrufen der Daten:', err);
+            return res.status(500).send('Serverfehler beim Abrufen der Daten');
+        }
+
+        if (results.length === 0) {
+            return res.status(404).send('Soundfile nicht gefunden');
+        }
+
+        const filepath = results[0].filepath;
+        const filePath = path.join(__dirname, filepath);
+
+        res.sendFile(filePath, (err) => {
+            if (err) {
+                console.error('Fehler beim Senden der Datei:', err);
+                res.status(500).send('Fehler beim Senden der Datei');
+            }
+        });
+    });
+});
+
+
 app.get('/soundfiles/:filename', (req, res) => {
     const filename = req.params.filename;
     const filePath = path.join(__dirname, 'uploads', filename);
@@ -251,7 +278,6 @@ app.get('/soundfiles/:filename', (req, res) => {
         }
     });
 });
-
 
 
 
