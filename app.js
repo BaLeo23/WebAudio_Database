@@ -26,7 +26,7 @@ app.use(session({
     secret: 'kIDhEhgpshfnr',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 60000 * 120} //session ist für 2 Stunden geöffnet
+    cookie: { secure: false, httpOnly: true, maxAge: 60000 * 120} //session ist für 2 Stunden geöffnet
 }));
 
 // Multer Konfiguration
@@ -106,12 +106,15 @@ app.post('/loginAdmin', async (req, res) => {
     }
 });
 
-app.get('/logout', (request, response) => {
-    request.session.destroy((err) => {
+app.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
         if (err) {
-            console.log(err);
+            console.error(err);
+            return res.status(500).send('Internal Server Error');
         } else {
-            response.send(true)
+            console.log("Gehst du überhaupt hier hin?")
+            res.clearCookie('connect.sid', { path: '/' });
+            res.send(true)
         }
     });
 });
@@ -226,7 +229,7 @@ app.get('/soundfiles', (req, res) => {
     if(!account_username){
         return res.status(401).send('Unauthorized');
     }
-    db.query('SELECT * FROM Soundfile WHERE account_username = ?', [account_username], (err, results) => {
+    db.query('SELECT * FROM Soundfile WHERE account_username = "standart" || account_username = ?', [account_username], (err, results) => {
         if (err) {
             console.error('Error fetching soundfiles:', err);
             res.status(500).send('Internal Server Error');
@@ -643,6 +646,18 @@ app.put('/pois/:id', (req, res) => {
         res.send('POI aktualisiert!');
     });
 });
+
+app.put('/updatePoiSoundfile/:id', (req, res) => {
+    const {id} = req.params;
+    const {soundfile_id} = req.body;
+    db.query('UPDATE POI SET soundfile_id = ? WHERE id = ?', [soundfile_id, id], (err, result) => {
+        if (err) {
+            console.error('Fehler beim Aktualisieren der Daten:', err);
+            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
+        }
+        res.send('POI aktualisiert!');
+    });
+})
 
 app.put('/updatePoiOrder', (req, res) => {
     const newOrder = req.body.newOrder;
