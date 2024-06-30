@@ -7,6 +7,7 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
 const path = require('path');
+const fs = require("fs");
 
 const app = express();
 
@@ -40,15 +41,23 @@ db.connect((err) => {
     console.log('Connected to the MySQL database.');
 });
 
+// Multer-Setup für Datei-Uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/');
+        // Stelle sicher, dass das Verzeichnis existiert, andernfalls erstelle es
+        const dir = path.join(__dirname, 'uploads');
+        console.log(dir)
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+            console.log("ich mach ein neues")
+        }
+        cb(null, dir);
     },
     filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        cb(null, file.originalname + " " + req.session.username);
     }
 });
+
 const upload = multer({ storage: storage });
 
 // Logging middleware
@@ -213,6 +222,39 @@ app.get('/soundfiles', (request, response) => {
     });
 });
 
+app.get('/soundfiles/:id/download', (req, res) => {
+    const { id } = req.params;
+
+    // Den Dateipfad aus der Datenbank abrufen
+    const getFilePathSql = 'SELECT filepath FROM Soundfile WHERE id = ?';
+    db.query(getFilePathSql, [id], (err, results) => {
+        if (err) {
+            console.error('Fehler beim Abrufen des Dateipfads:', err);
+            return res.status(500).send('Serverfehler beim Abrufen des Dateipfads');
+        }
+
+        if (results.length === 0) {
+            return res.status(404).send('Soundfile nicht gefunden');
+        }
+
+        const filePath = results[0].filepath;
+
+        // Überprüfen, ob die Datei existiert
+        fs.stat(filePath, (err, stat) => {
+            if (err) {
+                console.error('Datei nicht gefunden:', err);
+                return res.status(404).send('Datei nicht gefunden');
+            }
+
+            // Datei als Stream an den Client senden
+            res.setHeader('Content-Length', stat.size);
+            res.setHeader('Content-Type', 'audio/mpeg'); // Anpassen je nach Dateityp
+            const fileStream = fs.createReadStream(filePath);
+            fileStream.pipe(res);
+        });
+    });
+});
+
 // Route zum Bereitstellen der Sounddatei
 app.get('/soundfiles/:filename', (req, res) => {
     const filename = req.params.filename;
@@ -230,7 +272,7 @@ app.get('/soundfiles/:filename', (req, res) => {
 
 
 app.post('/soundfiles', upload.single('file'), (req, res) => {
-    const account_username = request.session.username;
+    const account_username = req.session.username;
     if(!account_username){
         return response.status(401).send('Unauthorized');
     }
@@ -238,7 +280,7 @@ app.post('/soundfiles', upload.single('file'), (req, res) => {
         return res.status(400).send('Keine Datei hochgeladen');
     }
 
-    const filename = req.file.originalname;  // Nutze den originalen Dateinamen
+    const filename = req.file.originalname + " " + req.session.username;  // Nutze den originalen Dateinamen
     const filepath = req.file.path;
     const upload_date = new Date();
 
