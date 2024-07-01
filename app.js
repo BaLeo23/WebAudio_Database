@@ -538,7 +538,7 @@ app.post('/usecasesAdmin', (req, res) => {
 app.put('/usecases/:id', (req, res) => {
     const { id } = req.params;
     const { titel, beschreibung, fixed_order, account_username } = req.body;
-    const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ? = ?, account_username = ? WHERE id = ?';
+    const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ?, account_username = ? WHERE id = ?';
     db.query(sql, [titel, beschreibung, fixed_order, account_username, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
