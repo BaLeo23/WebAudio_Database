@@ -4,7 +4,7 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 // Multer
 const multer = require('multer');
 const fs = require('fs');
@@ -50,13 +50,13 @@ const upload = multer({ storage: storage });
 const db = mysql.createConnection({
     host: 'localhost',
     port: 3306,
-    user: 'root',
-    password: '',
-    database: 'web_audio_db'
+    //user: 'root',
+    //password: '',
+    //database: 'web_audio_db'
     //port: 3307,
-    //user: 'webaudio',
-    //password: 'aui19o.qka1buDyjz44y',
-    //database: 'webaudio'
+    user: 'webaudio',
+    password: 'aui19o.qka1buDyjz44y',
+    database: 'webaudio'
 });
 
 db.connect((err) => {
@@ -538,7 +538,7 @@ app.post('/usecasesAdmin', (req, res) => {
 app.put('/usecases/:id', (req, res) => {
     const { id } = req.params;
     const { titel, beschreibung, fixed_order, account_username } = req.body;
-    const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ? = ?, account_username = ? WHERE id = ?';
+    const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ?, account_username = ? WHERE id = ?';
     db.query(sql, [titel, beschreibung, fixed_order, account_username, id], (err, result) => {
         if (err) {
             console.error('Fehler beim Aktualisieren der Daten:', err);
