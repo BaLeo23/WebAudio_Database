@@ -15,8 +15,18 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+//app.use(express.static('/home/webaudio/html/webAudioAdminInterface'));
+//app.use(express.static('/home/webaudio/my-node-app/WebAudio_Database/public'));
+
+//Route für die Wurzel-URL
+//app.get('/', (req, res) => {
+//res.sendFile('/home/webaudio/html/webAudioAdminInterface/index.html');
+//res.sendFile('/home/webaudio/my-node-app/WebAudio_Database/public/index.html');
+//});
+
+
 app.use(cors({
-    origin: 'http://localhost:8080',
+    origin: '*',
     headers: 'Content-Type, Authorization',
     methods: 'GET, POST, PUT, DELETE',
     credentials: true
@@ -73,7 +83,7 @@ app.use((req, res, next) => {
     next();
 });
 
-app.post('/loginAdmin', async (req, res) => {
+app.post('/api/loginAdmin', async (req, res) => {
     const { username, password } = req.body;
     try {
         if(req.session.username && req.session.username === ""){
@@ -82,7 +92,7 @@ app.post('/loginAdmin', async (req, res) => {
         } else if(username == null){
             res.send(false)
         } else {
-            db.query('SELECT * FROM account WHERE username = ?', [username], async (err, results) => {
+            db.query('SELECT * FROM Account WHERE username = ?', [username], async (err, results) => {
                 if (err) {
                     console.error('Error fetching accounts:', err);
                     res.status(500).send('Internal Server Error');
@@ -113,8 +123,8 @@ app.post('/loginAdmin', async (req, res) => {
     }
 });
 
-app.get('/logout', (req, res) => {
-    
+app.get('/api/logout', (req, res) => {
+
     req.session.username = ""
     req.session.isLoggedIn = false
     req.session.chosenUsecase = ""
@@ -133,7 +143,7 @@ app.get('/logout', (req, res) => {
 });
 
 // Account Routes
-app.get('/accounts', (req, res) => {
+app.get('/api/accounts', (req, res) => {
     db.query('SELECT * FROM Account', (err, results) => {
         if (err) {
             console.error('Error fetching accounts:', err);
@@ -144,7 +154,7 @@ app.get('/accounts', (req, res) => {
     });
 });
 
-app.post('/accounts', async (req, res) => {
+app.post('/api/accounts', async (req, res) => {
     const { username, password } = req.body;
     try {
         const saltRounds = 10;
@@ -165,7 +175,7 @@ app.post('/accounts', async (req, res) => {
 
 
 // Route zum Aktualisieren eines Accounts
-app.put('/accounts/:username', (req, res) => {
+app.put('/api/accounts/:username', (req, res) => {
     const { username } = req.params;
     const { password } = req.body;
     const sql = 'UPDATE Account SET password = ? WHERE username = ?';
@@ -181,7 +191,7 @@ app.put('/accounts/:username', (req, res) => {
 
 
 // Route zum Löschen eines Accounts
-app.delete('/accounts/:username', (req, res) => {
+app.delete('/api/accounts/:username', (req, res) => {
     const { username } = req.params;
     const sql = 'DELETE FROM Account WHERE username = ?';
     db.query(sql, [username], (err, result) => {
@@ -205,7 +215,7 @@ app.delete('/accounts/:username', (req, res) => {
 // Soundfile Routes
 
 /*
-app.post('/soundfiles', (req, res) => {
+app.post('/api/soundfiles', (req, res) => {
     const { id, filename, filepath, upload_date, account_username } = req.body;
     db.query('INSERT INTO Soundfile SET ?', { id, filename, filepath, upload_date, account_username }, (err, results) => {
         if (err) {
@@ -218,7 +228,7 @@ app.post('/soundfiles', (req, res) => {
 });
 
 // Route zum Aktualisieren eines Soundfiles
-app.put('/soundfiles/:id', (req, res) => {
+app.put('/api/soundfiles/:id', (req, res) => {
     const { id } = req.params;
     const { filename, filepath, upload_date, account_username } = req.body;
     const sql = 'UPDATE Soundfile SET filename = ?, filepath = ?, upload_date = ?, account_username = ? WHERE id = ?';
@@ -237,7 +247,7 @@ app.put('/soundfiles/:id', (req, res) => {
 })
  */
 
-app.get('/soundfiles', (req, res) => {
+app.get('/api/soundfiles', (req, res) => {
     const account_username = req.session.username
     if(!account_username){
         return res.status(401).send('Unauthorized');
@@ -253,7 +263,7 @@ app.get('/soundfiles', (req, res) => {
 });
 
 // Route zum Bereitstellen der Sounddatei
-app.get('/soundfiles/:id', (req, res) => {
+app.get('/api/soundfiles/:id', (req, res) => {
     const id = req.params.id;
     const sql = 'SELECT filepath FROM Soundfile WHERE id = ?';
 
@@ -267,8 +277,7 @@ app.get('/soundfiles/:id', (req, res) => {
             return res.status(404).send('Soundfile nicht gefunden');
         }
 
-        const filepath = results[0].filepath;
-        const filePath = path.join(__dirname, filepath);
+        const filePath = results[0].filepath;
 
         res.sendFile(filePath, (err) => {
             if (err) {
@@ -280,7 +289,7 @@ app.get('/soundfiles/:id', (req, res) => {
 });
 
 
-app.get('/soundfilesFile/:filename', (req, res) => {
+app.get('/api/soundfilesFile/:filename', (req, res) => {
     const filename = req.params.filename;
     const filePath = path.join(__dirname, 'uploads', filename);
 
@@ -294,7 +303,7 @@ app.get('/soundfilesFile/:filename', (req, res) => {
 
 
 
-app.post('/soundfiles', upload.single('file'), (req, res) => {
+app.post('/api/soundfiles', upload.single('file'), (req, res) => {
     const account_username = req.session.username;
     if(!account_username){
         return response.status(401).send('Unauthorized');
@@ -320,7 +329,7 @@ app.post('/soundfiles', upload.single('file'), (req, res) => {
 
 
 // Route zum Aktualisieren eines Soundfiles
-app.put('/soundfiles/:id', (req, res) => {
+app.put('/api/soundfiles/:id', (req, res) => {
     const { id } = req.params;
     const { filename, account_username } = req.body;
 
@@ -367,7 +376,7 @@ app.put('/soundfiles/:id', (req, res) => {
 
 
 // Route zum Löschen einer Soundfile
-app.delete('/soundfiles/:id', (req, res) => {
+app.delete('/api/soundfiles/:id', (req, res) => {
     const { id } = req.params;
 
     // Den Dateipfad aus der Datenbank abrufen
@@ -403,7 +412,7 @@ app.delete('/soundfiles/:id', (req, res) => {
     });
 });
 /*
-app.delete('/soundfiles/:id', (req, res) => {
+app.delete('/api/soundfiles/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM Soundfile WHERE id = ?';
 
@@ -428,7 +437,7 @@ app.delete('/soundfiles/:id', (req, res) => {
 
 // Progress Routes
 /*
-app.get('/progress', (req, res) => {
+app.get('/api/progress', (req, res) => {
     db.query('SELECT * FROM Progress', (err, results) => {
         if (err) {
             console.error('Error fetching progress:', err);
@@ -439,7 +448,7 @@ app.get('/progress', (req, res) => {
     });
 });
 
-app.post('/progress', (req, res) => {
+app.post('/api/progress', (req, res) => {
     const { id, found, account_username, poi_id } = req.body;
     db.query('INSERT INTO Progress SET ?', { id, found, account_username, poi_id }, (err, results) => {
         if (err) {
@@ -452,7 +461,7 @@ app.post('/progress', (req, res) => {
 });
 
 
-app.put('/progress/:id', (req, res) => {
+app.put('/api/progress/:id', (req, res) => {
     const { id } = req.params;
     const { found, account_username, poi_id } = req.body;
     const sql = 'UPDATE Progress SET found = ?, account_username = ?, poi_id = ? WHERE id = ?';
@@ -466,7 +475,7 @@ app.put('/progress/:id', (req, res) => {
 });
 
 
-app.delete('/progress/:id', (req, res) => {
+app.delete('/api/progress/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM Progress WHERE id = ?';
     db.query(sql, [id], (err, result) => {
@@ -487,7 +496,7 @@ app.delete('/progress/:id', (req, res) => {
 
 // Usecase Routes
 
-app.get('/usecasesAdmin', (req, res) => {
+app.get('/api/usecasesAdmin', (req, res) => {
     console.log(req.session)
     console.log(req.session.id)
     console.log(req.session.username)
@@ -506,7 +515,7 @@ app.get('/usecasesAdmin', (req, res) => {
     });
 });
 
-app.get('/usecases/:id', (req, res) => {
+app.get('/api/usecases/:id', (req, res) => {
     const id = req.params.id;
     db.query('SELECT * FROM Usecase WHERE id = ?', id, (err, results) => {
         if (err) {
@@ -518,7 +527,7 @@ app.get('/usecases/:id', (req, res) => {
     });
 })
 
-app.post('/usecasesAdmin', (req, res) => {
+app.post('/api/usecasesAdmin', (req, res) => {
     const { titel, beschreibung } = req.body;
     if(!req.session.username){
         return res.status(401).send('Unauthorized');
@@ -535,7 +544,7 @@ app.post('/usecasesAdmin', (req, res) => {
 });
 
 // Route zum Aktualisieren eines Usecases
-app.put('/usecases/:id', (req, res) => {
+app.put('/api/usecases/:id', (req, res) => {
     const { id } = req.params;
     const { titel, beschreibung, fixed_order, account_username } = req.body;
     const sql = 'UPDATE Usecase SET titel = ?, beschreibung = ?, fixed_order = ?, account_username = ? WHERE id = ?';
@@ -548,7 +557,7 @@ app.put('/usecases/:id', (req, res) => {
     });
 });
 
-app.put('/updateFixedOrderOfChosenUseCase', (req, res) => {
+app.put('/api/updateFixedOrderOfChosenUseCase', (req, res) => {
     const {fixed_order} = req.body
     if(!req.session.chosenUsecase){
         res.status(404).send('Usecase nicht gefunden');
@@ -574,7 +583,7 @@ app.put('/updateFixedOrderOfChosenUseCase', (req, res) => {
 })
 
 
-app.delete('/usecases/:id', (req, res) => {
+app.delete('/api/usecases/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM Usecase WHERE id = ?';
     db.query(sql, [id], (err, result) => {
@@ -592,7 +601,7 @@ app.delete('/usecases/:id', (req, res) => {
     });
 });
 
-app.post('/chosenUseCase', (req, res) => {
+app.post('/api/chosenUseCase', (req, res) => {
     const {id} = req.body
     if(!req.session.username) {
         return res.status(401).send('Unauthorized');
@@ -612,7 +621,7 @@ app.post('/chosenUseCase', (req, res) => {
     });
 })
 
-app.get('/chosenUseCase', (req, res) => {
+app.get('/api/chosenUseCase', (req, res) => {
     if(!req.session.username) {
         return res.status(401).send('Unauthorized');
     }
@@ -625,7 +634,7 @@ app.get('/chosenUseCase', (req, res) => {
 })
 
 // POI Routes
-app.get('/usecases/:id/pois', (req, res) => {
+app.get('/api/usecases/:id/pois', (req, res) => {
     const id = req.params.id;
     db.query('SELECT * FROM POI WHERE usecase_id = ?', id, (err, results) => {
         if (err) {
@@ -637,7 +646,7 @@ app.get('/usecases/:id/pois', (req, res) => {
     });
 });
 
-app.get('/pois', (req, res) => {
+app.get('/api/pois', (req, res) => {
     if(!req.session.username) {
         return res.status(401).send('Unauthorized');
     }
@@ -656,13 +665,13 @@ app.get('/pois', (req, res) => {
     });
 });
 
-app.post('/pois', (req, res) => {
+app.post('/api/pois', (req, res) => {
     const { order, name, x_coordinate, y_coordinate } = req.body;
     if(!req.session.username) {
         return res.status(401).send('Unauthorized');
     }
     const usecase_id = req.session.chosenUsecase.id
-    db.query('INSERT INTO POI SET ?', { id: null, order, x_coordinate, y_coordinate, soundfile_id: "1", usecase_id, name }, (err, results) => {
+    db.query('INSERT INTO POI SET ?', { id: null, order, x_coordinate, y_coordinate, soundfile_id: "4", usecase_id, name }, (err, results) => {
         if (err) {
             console.error('Error creating POI:', err);
             res.status(500).send('Internal Server Error');
@@ -673,7 +682,7 @@ app.post('/pois', (req, res) => {
 });
 
 // Route zum Aktualisieren eines POI
-app.put('/pois/:id', (req, res) => {
+app.put('/api/pois/:id', (req, res) => {
     const { id } = req.params;
     const { name, order, x_coordinate, y_coordinate, soundfile_id, usecase_id} = req.body;
     const sql = 'UPDATE POI SET `name` = ?, `order` = ?, x_coordinate = ?, y_coordinate = ?, soundfile_id = ?, usecase_id = ? WHERE id = ?';
@@ -686,7 +695,7 @@ app.put('/pois/:id', (req, res) => {
     });
 });
 
-app.put('/updatePoiSoundfile/:id', (req, res) => {
+app.put('/api/updatePoiSoundfile/:id', (req, res) => {
     const {id} = req.params;
     const {soundfile_id} = req.body;
     db.query('UPDATE POI SET soundfile_id = ? WHERE id = ?', [soundfile_id, id], (err, result) => {
@@ -698,7 +707,7 @@ app.put('/updatePoiSoundfile/:id', (req, res) => {
     });
 })
 
-app.put('/updatePoiOrder', (req, res) => {
+app.put('/api/updatePoiOrder', (req, res) => {
     const newOrder = req.body.newOrder;
     console.log(newOrder)
     newOrder.forEach(poi => {
@@ -715,7 +724,7 @@ app.put('/updatePoiOrder', (req, res) => {
     res.send('POI order updated successfully');
 });
 
-app.delete('/pois/:id', (req, res) => {
+app.delete('/api/pois/:id', (req, res) => {
     const { id } = req.params;
     const sql = 'DELETE FROM POI WHERE id = ?';
     db.query(sql, [id], (err, result) => {
@@ -741,7 +750,8 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
-const port = 3000;
+const port = 1025;
+//const port = 3000;
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
