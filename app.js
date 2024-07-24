@@ -47,7 +47,6 @@ const storage = multer.diskStorage({
         console.log(dir)
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir);
-            console.log("ich mach ein neues")
         }
         cb(null, dir);
     },
@@ -83,6 +82,16 @@ app.use((req, res, next) => {
     next();
 });
 
+app.get('/api/isAlreadyLoggedin', (req, res) => {
+
+    if(req.session.username){
+        console.log("already loggedIn")
+        res.send("true");
+    } else {
+        res.send("false");
+    }
+});
+
 app.post('/api/loginAdmin', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -99,7 +108,7 @@ app.post('/api/loginAdmin', async (req, res) => {
                     return;
                 }
                 if (results.length === 0) {
-                    return res.status(400).send('Invalid credentials');
+                    return res.send("false");
                 }
 
                 const user = results[0];
@@ -107,14 +116,14 @@ app.post('/api/loginAdmin', async (req, res) => {
                 console.log(user.password)
 
                 if (!user || !(await bcrypt.compare(password, user.password))) {
-                    return res.status(400).send('Invalid credentials');
+                    return res.send("false");
                 }
                 req.session.isLoggedIn = true;
                 console.log(user.username)
                 req.session.username = user.username;
                 console.log(req.session);
                 console.log(req.session.id);
-                res.send(true);
+                res.send("true");
             });
         }
     } catch (error) {
@@ -750,8 +759,8 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
-const port = 1025;
-//const port = 3000;
+//const port = 1025;
+const port = 3000;
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
