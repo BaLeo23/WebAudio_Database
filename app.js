@@ -95,11 +95,8 @@ app.get('/api/isAlreadyLoggedin', (req, res) => {
 app.post('/api/loginAdmin', async (req, res) => {
     const { username, password } = req.body;
     try {
-        if(req.session.username && req.session.username === ""){
-            console.log("already loggedIn")
-            res.send(true);
-        } else if(username == null){
-            res.send(false)
+        if(username == null || password == null){
+            res.send("false")
         } else {
             db.query('SELECT * FROM Account WHERE username = ?', [username], async (err, results) => {
                 if (err) {
