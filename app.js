@@ -218,44 +218,6 @@ app.delete('/api/accounts/:username', (req, res) => {
     });
 });
 
-
-
-
-// Soundfile Routes
-
-/*
-app.post('/api/soundfiles', (req, res) => {
-    const { id, filename, filepath, upload_date, account_username } = req.body;
-    db.query('INSERT INTO Soundfile SET ?', { id, filename, filepath, upload_date, account_username }, (err, results) => {
-        if (err) {
-            console.error('Error creating account:', err);
-            res.status(500).send('Serverfehler');
-            return;
-        }
-        res.send('Soundfile created successfully.');
-    });
-});
-
-// Route zum Aktualisieren eines Soundfiles
-app.put('/api/soundfiles/:id', (req, res) => {
-    const { id } = req.params;
-    const { filename, filepath, upload_date, account_username } = req.body;
-    const sql = 'UPDATE Soundfile SET filename = ?, filepath = ?, upload_date = ?, account_username = ? WHERE id = ?';
-    db.query(sql, [filename, filepath, upload_date, account_username, id], (err, result) => {
-        if (err) {
-            console.error('Fehler beim Aktualisieren der Daten:', err);
-            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
-        }
-
-        if (result.affectedRows === 0) {
-            return res.status(404).send('Soundfile nicht gefunden');
-        }
-
-        res.send(`Soundfile mit ID ${id} aktualisiert!`);
-    });
-})
- */
-
 app.get('/api/soundfiles', (req, res) => {
     const account_username = req.session.username
     if(!account_username){
@@ -297,7 +259,6 @@ app.get('/api/soundfiles/:id', (req, res) => {
     });
 });
 
-
 app.get('/api/soundfilesFile/:filename', (req, res) => {
     const filename = req.params.filename;
     const filePath = path.join(__dirname, 'uploads', filename);
@@ -309,8 +270,6 @@ app.get('/api/soundfilesFile/:filename', (req, res) => {
         }
     });
 });
-
-
 
 app.post('/api/soundfiles', upload.single('file'), (req, res) => {
     const account_username = req.session.username;
@@ -334,8 +293,6 @@ app.post('/api/soundfiles', upload.single('file'), (req, res) => {
             res.send('Soundfile erfolgreich erstellt');
         });
 });
-
-
 
 // Route zum Aktualisieren eines Soundfiles
 app.put('/api/soundfiles/:id', (req, res) => {
@@ -420,88 +377,6 @@ app.delete('/api/soundfiles/:id', (req, res) => {
         });
     });
 });
-/*
-app.delete('/api/soundfiles/:id', (req, res) => {
-    const { id } = req.params;
-    const sql = 'DELETE FROM Soundfile WHERE id = ?';
-
-    db.query(sql, [id], (err, result) => {
-        if (err) {
-            console.error('Fehler beim Löschen der Daten:', err);
-            return res.status(500).send('Serverfehler');
-
-        }
-        if (result.affectedRows === 0) {
-            return res.status(404).send('Soundfile nicht gefunden');
-
-        }
-        res.send('Soundfile gelöscht!');
-    });
-});
-
- */
-
-
-
-
-// Progress Routes
-/*
-app.get('/api/progress', (req, res) => {
-    db.query('SELECT * FROM Progress', (err, results) => {
-        if (err) {
-            console.error('Error fetching progress:', err);
-            res.status(500).send('Internal Server Error');
-            return;
-        }
-        res.json(results);
-    });
-});
-
-app.post('/api/progress', (req, res) => {
-    const { id, found, account_username, poi_id } = req.body;
-    db.query('INSERT INTO Progress SET ?', { id, found, account_username, poi_id }, (err, results) => {
-        if (err) {
-            console.error('Error creating progress:', err);
-            res.status(500).send('Internal Server Error');
-            return;
-        }
-        res.send('Progress created successfully.');
-    });
-});
-
-
-app.put('/api/progress/:id', (req, res) => {
-    const { id } = req.params;
-    const { found, account_username, poi_id } = req.body;
-    const sql = 'UPDATE Progress SET found = ?, account_username = ?, poi_id = ? WHERE id = ?';
-    db.query(sql, [found, account_username, poi_id, id], (err, result) => {
-        if (err) {
-            console.error('Fehler beim Aktualisieren der Daten:', err);
-            return res.status(500).send('Serverfehler beim Aktualisieren der Daten');
-        }
-        res.send(`Progress mit ID ${id} aktualisiert!`);
-    });
-});
-
-
-app.delete('/api/progress/:id', (req, res) => {
-    const { id } = req.params;
-    const sql = 'DELETE FROM Progress WHERE id = ?';
-    db.query(sql, [id], (err, result) => {
-        if (err) {
-            console.error('Fehler beim Löschen der Daten:', err);
-            return res.status(500).send('Serverfehler beim Löschen der Daten');
-        }
-
-        if (result.affectedRows === 0) {
-            res.status(404).send('Progress nicht gefunden');
-            return;
-        }
-
-        res.send(`Progress mit ID ${id} gelöscht!`);
-    });
-});
-*/
 
 // Usecase Routes
 
